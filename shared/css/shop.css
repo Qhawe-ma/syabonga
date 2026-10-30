@@ -336,10 +336,10 @@ main.has-dock { padding-bottom: 108px; }
 }
 .pc:hover { box-shadow: 0 0 0 1px rgba(14, 42, 92, 0.32); }
 .pc .im {
-  position: relative; aspect-ratio: 4 / 3; background: #F4F3F0;
+  position: relative; aspect-ratio: 3 / 2; background: #F4F3F0;
   display: grid; place-items: center; border-radius: var(--radius) var(--radius) 0 0; overflow: hidden;
 }
-.pc .im img, .pc .im svg { width: 92%; height: 92%; object-fit: contain; }
+.pc .im img, .pc .im svg { width: 94%; height: 94%; object-fit: contain; }
 .badge {
   position: absolute; top: 6px; left: 6px; z-index: 1;
   background: #F4C400; color: #1A1D23; font-size: 10px; font-weight: 700;
@@ -386,13 +386,17 @@ main.has-dock { padding-bottom: 108px; }
 .step button:hover:not(:disabled) { background: #E8EEF8; }
 .step span { min-width: 22px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .out { font-size: 12.5px; font-weight: 700; color: var(--muted); display: inline-flex; align-items: center; min-height: 38px; }
-@media (min-width: 1100px) {
-  .buyrow { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
-  .add, .step { width: auto; min-width: 96px; height: 36px; min-height: 36px; }
-  .out { min-height: 0; }
+@media (min-width: 720px) {
+  .grid .buyrow { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
+  .grid .add, .grid .step { width: auto; min-width: 88px; height: 34px; min-height: 34px; }
+  .grid .out { min-height: 0; }
 }
-.rail .buyrow { flex-direction: column; align-items: stretch; }
-.rail .add, .rail .step { width: 100%; min-width: 0; height: 36px; min-height: 36px; }
+.rail .buyrow {
+  flex-direction: row; align-items: center; justify-content: space-between; gap: 8px;
+}
+.rail .add, .rail .step { width: auto; min-width: 72px; flex: none; height: 34px; min-height: 34px; }
+.rail .add { font-size: 14px; padding: 0 12px; }
+.rail .price-stack { min-width: 0; }
 
 .chips-scroll { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .chips-scroll::-webkit-scrollbar { display: none; }
