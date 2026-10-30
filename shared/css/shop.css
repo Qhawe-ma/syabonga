@@ -273,13 +273,20 @@ main.has-dock { padding-bottom: 108px; }
   position: absolute; left: 12px; bottom: 12px; background: #fff; color: var(--ink);
   font-weight: 700; font-size: 14px; padding: 6px 10px; border-radius: 6px;
 }
-.promises { display: grid; gap: 10px; margin-top: 12px; }
-@media (min-width: 800px) { .promises { grid-template-columns: repeat(3, 1fr); } }
-.promises article {
-  background: #fff; border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--ring);
+.promises {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(14, 42, 92, 0.12);
+  border-bottom: 1px solid rgba(14, 42, 92, 0.12);
 }
-.promises b { display: block; font-size: 15px; margin-bottom: 4px; }
-.promises span { color: var(--muted); font-size: 14px; }
+@media (min-width: 720px) {
+  .promises { grid-template-columns: 1fr 1fr; gap: 20px 32px; }
+}
+.promises p { margin: 0; display: grid; gap: 2px; }
+.promises b { font-size: 15px; font-weight: 700; color: var(--ink); }
+.promises span { color: var(--muted); font-size: 13.5px; line-height: 1.35; }
 
 .depthead, .rowh h2 { font-size: 22px; line-height: 1.15; margin: 0; }
 @media (min-width: 800px) { .depthead, .rowh h2 { font-size: 26px; } }

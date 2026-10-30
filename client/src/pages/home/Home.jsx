@@ -44,20 +44,19 @@ export default function Home() {
               <span>Stokvel combos</span>
             </Link>
           </section>
-          <div className="promises">
-            <article>
-              <b>Free delivery over {money(settings.free_over || 500)}</b>
-              <span>Picked in the shop and brought to your gate.</span>
-            </article>
-            <article>
-              <b>Delivery from {money(settings.fee || 25)}</b>
-              <span>Delivery orders start at {money(settings.min_delivery || 150)}.</span>
-            </article>
-            <article>
+          <section className="promises" aria-label="Delivery and payment">
+            <p>
+              <b>Delivery {money(settings.fee || 25)}</b>
+              <span>
+                Free over {money(settings.free_over || 500)}
+                {' · '}Orders from {money(settings.min_delivery || 150)}
+              </span>
+            </p>
+            <p>
               <b>Cash or card at the door</b>
-              <span>Or collect free at {settings.address || 'the shop'}.</span>
-            </article>
-          </div>
+              <span>Collect free at {settings.address || 'the shop'}</span>
+            </p>
+          </section>
 
           <h2 className="depthead">Shop by department</h2>
           <div className="qs">
