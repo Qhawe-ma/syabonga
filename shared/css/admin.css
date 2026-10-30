@@ -16,6 +16,8 @@
 .admin-main { min-width: 0; }
 .admin-main h1 { font-size: 28px; margin: 0 0 14px; }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+@media (min-width: 800px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+.doc { width: 160px; height: 120px; object-fit: cover; border-radius: 8px; background: #F4F3F0; margin-top: 8px; }
 .stat {
   background: #fff; border-radius: 12px; padding: 14px 16px;
   box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.08);

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Chrome from '../../components/Chrome.jsx';
 import PlacePicker from '../../components/PlacePicker.jsx';
-import { money, useShop } from '../../shop.jsx';
+import { formatCell, money, useShop } from '../../shop.jsx';
 
 const slots = ['Today, 2 pm to 5 pm', 'Today, 5 pm to 8 pm', 'Tomorrow, 8 am to 12 pm'];
 
@@ -39,6 +39,10 @@ export default function Checkout() {
   async function submitOrder(event) {
     event.preventDefault();
     setError('');
+    if (low) {
+      setError('Delivery orders start at ' + money(settings.min_delivery) + '. Add more, or choose collection.');
+      return;
+    }
     setBusy(true);
     try {
       const data = await shop.api('/api/orders', {
@@ -63,7 +67,7 @@ export default function Checkout() {
 
   if (!lines.length) {
     return (
-      <Chrome>
+      <Chrome plain>
         <div className="empty-state">
           <h2>Your basket is empty</h2>
           <p>Add a few groceries, then come back to enter your details.</p>
@@ -74,18 +78,23 @@ export default function Checkout() {
   }
 
   return (
-    <Chrome>
-      <div className="crumb"><Link to="/cart">Basket</Link> › <span>Checkout</span></div>
+    <Chrome plain>
+      <div className="crumb"><Link to="/cart">Basket</Link> <span aria-hidden="true">/</span> <span>Checkout</span></div>
+      <ol className="steps checkout-steps" aria-label="Checkout steps">
+        <li className="on">Your details</li>
+        <li className="on">{mode === 'delivery' ? 'Address' : 'Collection'}</li>
+        <li className="on">Pay at the door</li>
+      </ol>
       <div className="paygrid">
         <form id="checkout" className="sheet flat" onSubmit={submitOrder}>
           <h1>Checkout</h1>
-          <p className="lead">{mode === 'delivery' ? 'Our staff pick the order and bring it to your gate.' : 'Collect free at ' + (settings.address || 'the shop') + '.'}</p>
+          <p className="lead">No account needed. {mode === 'delivery' ? 'Our staff pick the order and bring it to your gate.' : 'Collect free at ' + (settings.address || 'the shop') + '.'}</p>
           <div className="tabs">
             <button type="button" aria-pressed={mode === 'delivery'} onClick={() => setMode('delivery')}>Deliver to me</button>
             <button type="button" aria-pressed={mode === 'collect'} onClick={() => setMode('collect')}>I will collect</button>
           </div>
-          <label>Your name<input value={name} onChange={(e) => setName(e.target.value)} required /></label>
-          <label>Cell number<input value={cell} onChange={(e) => setCell(e.target.value)} inputMode="tel" required /></label>
+          <label>Your name<input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" required /></label>
+          <label>Cell number<input value={cell} onChange={(e) => setCell(formatCell(e.target.value))} inputMode="tel" autoComplete="tel" placeholder="082 555 0199" required /></label>
           {mode === 'delivery' ? <PlacePicker value={place} onChange={(next) => { setPlace(next); shop.saveAddr(next); }} /> : null}
           <label>{mode === 'delivery' ? 'Delivery window' : 'Collection window'}
             <select value={slot} onChange={(e) => setSlot(e.target.value)}>{slots.map((s) => <option key={s}>{s}</option>)}</select>
@@ -104,7 +113,7 @@ export default function Checkout() {
           {lines.map((p) => <div className="sline" key={p.id}><span>{shop.cart[p.id]} × {p.name}</span><b>{money(p.price * shop.cart[p.id])}</b></div>)}
           <div className="sline"><span>{mode === 'delivery' ? 'Delivery' : 'Collection'}</span><b>{fee ? money(fee) : 'Free'}</b></div>
           <div className="sline tot"><span>Total</span><b>{money(shop.subtotal + fee)}</b></div>
-          <button className="btn block" form="checkout" type="submit" disabled={busy || low}>{busy ? 'Placing…' : 'Place order'}</button>
+          <button className="btn block" form="checkout" type="submit" disabled={busy}>{busy ? 'Placing order…' : 'Place order'}</button>
           <p className="fine">You pay when the order arrives or when you collect. The shop sees this order in admin.</p>
         </aside>
       </div>

@@ -60,7 +60,7 @@ export default function Orders() {
                 {order.mode === 'delivery' ? (
                   <select value={order.driverId || ''} onChange={(e) => assign(order, e.target.value)}>
                     <option value="">No driver</option>
-                    {drivers.map((driver) => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+                    {drivers.filter((driver) => driver.status === 'active' || String(driver.id) === String(order.driverId)).map((driver) => <option key={driver.id} value={driver.id}>{driver.name}{driver.status !== 'active' ? ' (' + driver.status + ')' : ''}</option>)}
                   </select>
                 ) : 'Collect'}
               </td>

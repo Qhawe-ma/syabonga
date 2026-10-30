@@ -50,7 +50,7 @@ function readBody(req) {
     let size = 0;
     req.on('data', function (c) {
       size += c.length;
-      if (size > 2_500_000) {
+      if (size > 8_000_000) {
         reject(new Error('too big'));
         req.destroy();
         return;
@@ -69,8 +69,18 @@ function readBody(req) {
 function userFrom(req) {
   const token = cookies(req).sid;
   if (!token) return null;
-  const row = db.prepare(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`).get(token);
-  return row || null;
+  const row = db.prepare(`SELECT u.*, s.created_at AS session_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?`).get(token);
+  if (!row) return null;
+  const age = Date.now() - Date.parse(row.session_at || '');
+  if (!Number.isFinite(age) || age > 30 * 24 * 60 * 60 * 1000) {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    return null;
+  }
+  if (row.status === 'suspended') {
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
+    return null;
+  }
+  return row;
 }
 
 function setSession(res, userId) {
@@ -79,9 +89,100 @@ function setSession(res, userId) {
   return token;
 }
 
-function cookieHeader(token) {
+function cookieHeader(token, secure) {
   const bits = ['sid=' + token, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=2592000'];
+  if (secure) bits.push('Secure');
   return bits.join('; ');
+}
+
+function normaliseCell(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.startsWith('27') && digits.length === 11) digits = '0' + digits.slice(2);
+  return digits;
+}
+
+function cellOk(digits) {
+  return /^0\d{9}$/.test(digits);
+}
+
+function passwordProblem(pw) {
+  const value = String(pw || '');
+  if (value.length < 8) return 'Use a password of at least 8 characters.';
+  const blocked = ['password', '12345678', 'password1', 'qwertyui', 'changeme'];
+  if (blocked.indexOf(value.toLowerCase()) >= 0) return 'Choose a less common password.';
+  return '';
+}
+
+const loginFails = new Map();
+
+function tooManyTries(cell) {
+  const row = loginFails.get(cell);
+  if (!row) return false;
+  if (Date.now() - row.start > 15 * 60 * 1000) {
+    loginFails.delete(cell);
+    return false;
+  }
+  return row.n >= 8;
+}
+
+function noteFail(cell) {
+  const row = loginFails.get(cell);
+  if (!row || Date.now() - row.start > 15 * 60 * 1000) loginFails.set(cell, { n: 1, start: Date.now() });
+  else row.n += 1;
+}
+
+function clearFail(cell) {
+  loginFails.delete(cell);
+}
+
+function issueSession(res, req, userId) {
+  const token = setSession(res, userId);
+  res.setHeader('Set-Cookie', cookieHeader(token, !!(req.socket && req.socket.encrypted)));
+}
+
+function notify(kind, body, orderId) {
+  db.prepare('INSERT INTO notifications (kind, body, order_id, created_at) VALUES (?, ?, ?, ?)')
+    .run(kind, body, orderId || null, new Date().toISOString());
+}
+
+function wasPrice(value, price) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= Number(price)) return null;
+  return Math.round(n * 100) / 100;
+}
+
+function saveDataImage(name, dataUrl) {
+  const m = String(dataUrl || '').match(/^data:image\/(jpeg|jpg|png|webp);base64,(.+)$/);
+  if (!m) return null;
+  const ext = m[1] === 'png' ? 'png' : m[1] === 'webp' ? 'webp' : 'jpg';
+  const buf = Buffer.from(m[2], 'base64');
+  if (buf.length < 80 || buf.length > 2_400_000) return null;
+  const dir = path.join(root, 'shared', 'img', 'uploads');
+  fs.mkdirSync(dir, { recursive: true });
+  const rel = '/shared/img/uploads/' + name + '.' + ext;
+  fs.writeFileSync(path.join(root, rel.replace(/^\//, '')), buf);
+  return rel;
+}
+
+function driverCard(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    cell: row.cell,
+    status: row.status || 'active',
+    createdAt: row.created_at,
+    idNumber: row.id_number || '',
+    vehicleType: row.vehicle_type || '',
+    vehicleReg: row.vehicle_reg || '',
+    licenceNo: row.licence_no || '',
+    bankName: row.bank_name || '',
+    accountHolder: row.account_holder || '',
+    accountNumber: row.account_number || '',
+    branchCode: row.branch_code || '',
+    photo: row.photo || '',
+    licencePhoto: row.licence_photo || ''
+  };
 }
 
 function clearCookie() {
@@ -314,32 +415,118 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && route === '/api/auth/signup') {
     const body = await readBody(req);
     const name = String(body.name || '').trim();
-    const cell = String(body.cell || '').replace(/\s/g, '');
+    const cell = normaliseCell(body.cell);
     const pass = String(body.password || '');
-    if (name.length < 2) return json(res, 400, { error: 'Add your name.' });
-    if (cell.length < 10) return json(res, 400, { error: 'Enter a cell number we can message.' });
-    if (pass.length < 4) return json(res, 400, { error: 'Use a password of at least 4 characters.' });
+    if (name.length < 2) return json(res, 400, { error: 'Add your name and surname.' });
+    if (!cellOk(cell)) return json(res, 400, { error: 'Enter a South African number, 10 digits starting with 0.' });
+    const pwErr = passwordProblem(pass);
+    if (pwErr) return json(res, 400, { error: pwErr });
     if (db.prepare('SELECT id FROM users WHERE cell = ?').get(cell)) {
-      return json(res, 400, { error: 'That cell number already has an account. Sign in instead.' });
+      return json(res, 400, { error: 'That number already has an account. Sign in instead.' });
     }
-    const info = db.prepare('INSERT INTO users (name, cell, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(name, cell, hashPassword(pass), 'customer', new Date().toISOString());
+    const info = db.prepare('INSERT INTO users (name, cell, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(name, cell, hashPassword(pass), 'customer', 'active', new Date().toISOString());
     const id = Number(info.lastInsertRowid);
-    const token = setSession(res, id);
-    res.setHeader('Set-Cookie', cookieHeader(token));
+    issueSession(res, req, id);
     return json(res, 200, { user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
+  }
+
+  if (method === 'POST' && route === '/api/auth/driver-signup') {
+    const body = await readBody(req);
+    const name = String(body.name || '').trim();
+    const cell = normaliseCell(body.cell);
+    const pass = String(body.password || '');
+    const idNumber = String(body.idNumber || '').replace(/\D/g, '');
+    const vehicleType = String(body.vehicleType || '').trim();
+    const vehicleReg = String(body.vehicleReg || '').trim().toUpperCase();
+    const licenceNo = String(body.licenceNo || '').trim();
+    const vehicles = ['Car', 'Bakkie', 'Motorbike', 'Bicycle'];
+    const bankName = String(body.bankName || '').trim();
+    const accountHolder = String(body.accountHolder || '').trim();
+    const accountNumber = String(body.accountNumber || '').replace(/\D/g, '');
+    const branchCode = String(body.branchCode || '').replace(/\D/g, '');
+    if (name.length < 2) return json(res, 400, { error: 'Add your name and surname.' });
+    if (!cellOk(cell)) return json(res, 400, { error: 'Enter a South African cell number, 10 digits starting with 0.' });
+    const pwErr = passwordProblem(pass);
+    if (pwErr) return json(res, 400, { error: pwErr });
+    if (!/^\d{13}$/.test(idNumber)) return json(res, 400, { error: 'Enter a 13-digit South African ID number.' });
+    if (vehicles.indexOf(vehicleType) < 0) return json(res, 400, { error: 'Choose a vehicle type.' });
+    if (vehicleReg.length < 2 || vehicleReg.length > 12) return json(res, 400, { error: 'Enter the vehicle registration.' });
+    if (licenceNo.length < 4) return json(res, 400, { error: 'Enter the driver\'s licence number.' });
+    const banking = bankName || accountHolder || accountNumber || branchCode;
+    if (banking && (bankName.length < 2 || accountHolder.length < 2 || accountNumber.length < 6 || branchCode.length < 4)) {
+      return json(res, 400, { error: 'Add the bank, account holder, account number and branch code, or leave banking blank.' });
+    }
+    if (db.prepare('SELECT id FROM users WHERE cell = ?').get(cell)) {
+      return json(res, 400, { error: 'That number already has an account. Sign in instead.' });
+    }
+    const info = db.prepare(`INSERT INTO users
+      (name, cell, password_hash, role, status, created_at, id_number, vehicle_type, vehicle_reg, licence_no, bank_name, account_holder, account_number, branch_code)
+      VALUES (?, ?, ?, 'driver', 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(name, cell, hashPassword(pass), new Date().toISOString(), idNumber, vehicleType, vehicleReg, licenceNo, bankName, accountHolder, accountNumber, branchCode);
+    const id = Number(info.lastInsertRowid);
+    const photo = body.photo ? saveDataImage('driver-' + id + '-photo', body.photo) : null;
+    const licencePhoto = body.licencePhoto ? saveDataImage('driver-' + id + '-licence', body.licencePhoto) : null;
+    if (photo || licencePhoto) {
+      db.prepare('UPDATE users SET photo = COALESCE(?, photo), licence_photo = COALESCE(?, licence_photo) WHERE id = ?')
+        .run(photo, licencePhoto, id);
+    }
+    notify('driver', name + ' applied to drive. Cell ' + cell + '.', null);
+    issueSession(res, req, id);
+    return json(res, 200, { user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id)) });
+  }
+
+  if (method === 'POST' && route === '/api/auth/forgot') {
+    const body = await readBody(req);
+    const cell = normaliseCell(body.cell);
+    const message = 'If that number has an account, ask the shop to read you the reset code. It expires in 30 minutes.';
+    if (!cellOk(cell)) return json(res, 400, { error: 'Enter the 10-digit number on the account.' });
+    const person = db.prepare('SELECT id FROM users WHERE cell = ?').get(cell);
+    if (person) {
+      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const recent = db.prepare('SELECT COUNT(*) AS n FROM password_resets WHERE cell = ? AND created_at > ?').get(cell, hourAgo).n;
+      if (recent >= 3) return json(res, 429, { error: 'Too many reset requests. Wait an hour, or call the shop.' });
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      const now = new Date().toISOString();
+      db.prepare('UPDATE password_resets SET used = 1 WHERE cell = ? AND used = 0').run(cell);
+      db.prepare('INSERT INTO password_resets (cell, code, expires_at, created_at, used) VALUES (?, ?, ?, ?, 0)')
+        .run(cell, code, new Date(Date.now() + 30 * 60 * 1000).toISOString(), now);
+      notify('reset', 'Password reset code for ' + cell + '.', null);
+    }
+    return json(res, 200, { ok: true, message: message });
+  }
+
+  if (method === 'POST' && route === '/api/auth/reset') {
+    const body = await readBody(req);
+    const cell = normaliseCell(body.cell);
+    const code = String(body.code || '').replace(/\D/g, '');
+    const pass = String(body.password || '');
+    if (!cellOk(cell) || code.length !== 6) return json(res, 400, { error: 'Enter the cell number and the 6-digit code from the shop.' });
+    const pwErr = passwordProblem(pass);
+    if (pwErr) return json(res, 400, { error: pwErr });
+    const row = db.prepare('SELECT * FROM password_resets WHERE cell = ? AND code = ? AND used = 0 ORDER BY id DESC LIMIT 1').get(cell, code);
+    if (!row || Date.parse(row.expires_at) < Date.now()) return json(res, 400, { error: 'That code is wrong or it has expired. Ask the shop for a new one.' });
+    const person = db.prepare('SELECT id FROM users WHERE cell = ?').get(cell);
+    if (!person) return json(res, 400, { error: 'That code is wrong or it has expired. Ask the shop for a new one.' });
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(pass), person.id);
+    db.prepare('UPDATE password_resets SET used = 1 WHERE id = ?').run(row.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(person.id);
+    return json(res, 200, { ok: true });
   }
 
   if (method === 'POST' && route === '/api/auth/login') {
     const body = await readBody(req);
-    const cell = String(body.cell || '').replace(/\s/g, '');
+    const cell = normaliseCell(body.cell);
     const pass = String(body.password || '');
+    if (tooManyTries(cell)) return json(res, 429, { error: 'Too many tries. Wait 15 minutes, or ask the shop to reset the password.' });
     const row = db.prepare('SELECT * FROM users WHERE cell = ?').get(cell);
     if (!row || !checkPassword(pass, row.password_hash)) {
-      return json(res, 400, { error: 'That cell number and password do not match.' });
+      noteFail(cell);
+      return json(res, 400, { error: 'That number and password do not match.' });
     }
-    const token = setSession(res, row.id);
-    res.setHeader('Set-Cookie', cookieHeader(token));
+    if (row.status === 'suspended') return json(res, 403, { error: 'This account is suspended. Call the shop.' });
+    clearFail(cell);
+    issueSession(res, req, row.id);
     return json(res, 200, { user: publicUser(row) });
   }
 
@@ -393,7 +580,7 @@ async function handleApi(req, res, url) {
   if (method === 'POST' && route === '/api/orders') {
     const body = await readBody(req);
     const name = String(body.name || (user && user.name) || '').trim();
-    const cell = String(body.cell || (user && user.cell) || '').replace(/\s/g, '');
+    const cell = normaliseCell(body.cell || (user && user.cell) || '');
     const mode = body.mode === 'collect' ? 'collect' : 'delivery';
     const line = String(body.address || '').trim();
     const town = String(body.town || 'Kranskop').trim() || 'Kranskop';
@@ -403,7 +590,7 @@ async function handleApi(req, res, url) {
     const slot = String(body.slot || 'Today, 2 pm to 5 pm');
     const pay = body.payMethod === 'card' ? 'card' : 'cash';
     const items = Array.isArray(body.items) ? body.items : [];
-    if (name.length < 2 || cell.length < 10) return json(res, 400, { error: 'Add your name and cell number.' });
+    if (name.length < 2 || !cellOk(cell)) return json(res, 400, { error: 'Add your name and a 10-digit phone number.' });
     if (mode === 'delivery' && line.length < 2) return json(res, 400, { error: 'Add a landmark so the driver knows the gate.' });
     if (mode === 'delivery' && !pinOk(lat, lng)) return json(res, 400, { error: 'Drop a pin, or use your current location, so the driver can find you.' });
     if (!items.length) return json(res, 400, { error: 'Your basket is empty.' });
@@ -456,6 +643,7 @@ async function handleApi(req, res, url) {
         });
       }
       db.exec('COMMIT');
+      notify('order', name + ' placed ' + number + '.', orderId);
       const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
       return json(res, 200, { order: orderBundle(order) });
     } catch (err) {
@@ -485,6 +673,45 @@ async function handleApi(req, res, url) {
       json(res, 401, { error: 'Driver sign-in required.' });
       return;
     }
+    if (user.status === 'suspended') {
+      json(res, 403, { error: 'This driver account is suspended.' });
+      return;
+    }
+    if ((user.status || 'active') !== 'active') {
+      json(res, 403, { error: 'The shop still needs to approve your account.' });
+      return;
+    }
+  }
+
+  if (method === 'GET' && route === '/api/driver/available') {
+    const rows = db.prepare("SELECT * FROM orders WHERE mode = 'delivery' AND driver_id IS NULL AND status IN ('new','accepted','picking') ORDER BY id DESC").all();
+    return json(res, 200, { orders: rows.map(orderBundle) });
+  }
+
+  if (method === 'GET' && route === '/api/driver/earnings') {
+    const settings = settingsMap(db);
+    const pay = Number(settings.driver_pay || 0);
+    const rows = db.prepare("SELECT * FROM orders WHERE driver_id = ? AND status = 'delivered' ORDER BY id DESC").all();
+    return json(res, 200, {
+      pay: pay,
+      total: Math.round(rows.length * pay * 100) / 100,
+      drops: rows.map(function (order) {
+        return { id: order.id, number: order.number, at: order.created_at, amount: pay, address: order.address };
+      })
+    });
+  }
+
+  const acceptOrder = route.match(/^\/api\/driver\/orders\/(\d+)\/accept$/);
+  if (method === 'POST' && acceptOrder) {
+    const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(acceptOrder[1]));
+    if (!order || order.mode !== 'delivery') return json(res, 404, { error: 'That delivery is not available.' });
+    if (order.driver_id) return json(res, 409, { error: 'Another driver already took this order.' });
+    if (['cancelled', 'delivered', 'collected'].indexOf(order.status) >= 0) return json(res, 400, { error: 'That order is already finished.' });
+    const next = order.status === 'new' ? 'accepted' : order.status;
+    db.prepare('UPDATE orders SET driver_id = ?, status = ? WHERE id = ? AND driver_id IS NULL').run(user.id, next, order.id);
+    const saved = db.prepare('SELECT * FROM orders WHERE id = ?').get(order.id);
+    if (saved.driver_id !== user.id) return json(res, 409, { error: 'Another driver already took this order.' });
+    return json(res, 200, { order: orderBundle(saved) });
   }
 
   if (method === 'GET' && route === '/api/driver/orders') {
@@ -530,7 +757,23 @@ async function handleApi(req, res, url) {
     const open = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE status IN ('new','accepted','picking','out','ready')").get().n;
     const dayCount = db.prepare('SELECT COUNT(*) AS n FROM orders WHERE created_at LIKE ?').get(today + '%').n;
     const low = db.prepare('SELECT id, name, stock FROM products WHERE active = 1 AND stock <= 5 ORDER BY stock, name').all();
-    return json(res, 200, { open: open, today: dayCount, orders: orders, low: low });
+    const dayRows = db.prepare('SELECT total, status FROM orders WHERE created_at LIKE ?').all(today + '%');
+    const revenue = dayRows.reduce(function (n, row) { return row.status === 'cancelled' ? n : n + Number(row.total || 0); }, 0);
+    const unread = db.prepare('SELECT COUNT(*) AS n FROM notifications WHERE read_at IS NULL').get().n;
+    const notes = db.prepare('SELECT id, kind, body, order_id, created_at, read_at FROM notifications ORDER BY id DESC LIMIT 8').all();
+    const resets = db.prepare(`SELECT r.id, r.cell, r.code, r.expires_at, u.name
+      FROM password_resets r LEFT JOIN users u ON u.cell = r.cell
+      WHERE r.used = 0 AND r.expires_at > ? ORDER BY r.id DESC`).all(new Date().toISOString());
+    return json(res, 200, {
+      open: open,
+      today: dayCount,
+      revenue: Math.round(revenue * 100) / 100,
+      orders: orders,
+      low: low,
+      unread: unread,
+      notes: notes,
+      resets: resets
+    });
   }
 
   if (method === 'GET' && route === '/api/admin/orders') {
@@ -554,8 +797,9 @@ async function handleApi(req, res, url) {
       if (!driverId) {
         db.prepare('UPDATE orders SET driver_id = NULL WHERE id = ?').run(order.id);
       } else {
-        const driver = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'driver'").get(driverId);
+        const driver = db.prepare("SELECT id, status FROM users WHERE id = ? AND role = 'driver'").get(driverId);
         if (!driver) return json(res, 400, { error: 'Choose a driver account.' });
+        if ((driver.status || 'active') !== 'active') return json(res, 400, { error: 'Approve that driver before assigning deliveries.' });
         db.prepare('UPDATE orders SET driver_id = ? WHERE id = ?').run(driver.id, order.id);
       }
     }
@@ -586,8 +830,9 @@ async function handleApi(req, res, url) {
     if (name.length < 2 || !size || !(price >= 0) || !db.prepare('SELECT slug FROM categories WHERE slug = ?').get(category)) {
       return json(res, 400, { error: 'Name, pack size, price and department are required.' });
     }
-    const info = db.prepare(`INSERT INTO products (name, size, price, category, stock, photo, active, items, blurb)
-      VALUES (?, ?, ?, ?, ?, NULL, 1, ?, ?)`).run(name, size, price, category, stock, null, 'Added by the shop.');
+    const was = wasPrice(body.compareAt, price);
+    const info = db.prepare(`INSERT INTO products (name, size, price, compare_at, category, stock, photo, active, items, blurb)
+      VALUES (?, ?, ?, ?, ?, ?, NULL, 1, ?, ?)`).run(name, size, price, was, category, stock, null, 'Added by the shop.');
     const id = Number(info.lastInsertRowid);
     const photo = body.photo ? savePhoto(id, body.photo) : null;
     if (photo) db.prepare('UPDATE products SET photo = ? WHERE id = ?').run(photo, id);
@@ -611,31 +856,70 @@ async function handleApi(req, res, url) {
     }
     let photo = row.photo;
     if (body.photo) photo = savePhoto(id, body.photo) || photo;
-    db.prepare('UPDATE products SET name=?, size=?, price=?, category=?, stock=?, active=?, photo=? WHERE id=?')
-      .run(name, size, price, category, stock, active, photo, id);
+    const was = body.compareAt === undefined ? row.compare_at : wasPrice(body.compareAt, price);
+    db.prepare('UPDATE products SET name=?, size=?, price=?, compare_at=?, category=?, stock=?, active=?, photo=? WHERE id=?')
+      .run(name, size, price, was, category, stock, active, photo, id);
     return json(res, 200, { product: publicProduct(db.prepare('SELECT * FROM products WHERE id = ?').get(id)) });
   }
 
+  if (method === 'DELETE' && edit) {
+    const id = Number(edit[1]);
+    const row = db.prepare('SELECT id FROM products WHERE id = ?').get(id);
+    if (!row) return json(res, 404, { error: 'Product not found.' });
+    const used = db.prepare('SELECT COUNT(*) AS n FROM order_items WHERE product_id = ?').get(id).n;
+    if (used) {
+      db.prepare('UPDATE products SET active = 0 WHERE id = ?').run(id);
+      return json(res, 200, { hidden: true });
+    }
+    db.prepare('DELETE FROM products WHERE id = ?').run(id);
+    return json(res, 200, { deleted: true });
+  }
+
+  if (method === 'POST' && route === '/api/admin/categories') {
+    const body = await readBody(req);
+    const name = String(body.name || '').trim();
+    if (name.length < 2) return json(res, 400, { error: 'Add a department name.' });
+    let slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+    if (!slug) return json(res, 400, { error: 'Use a name with letters.' });
+    if (db.prepare('SELECT slug FROM categories WHERE slug = ?').get(slug)) slug = slug + '-' + Date.now().toString().slice(-4);
+    const sort = db.prepare('SELECT COALESCE(MAX(sort), 0) + 1 AS n FROM categories').get().n;
+    db.prepare('INSERT INTO categories (slug, name, sort) VALUES (?, ?, ?)').run(slug, name, sort);
+    return json(res, 200, { category: { slug: slug, name: name } });
+  }
+
   if (method === 'GET' && route === '/api/admin/drivers') {
-    const drivers = db.prepare("SELECT id, name, cell, created_at FROM users WHERE role = 'driver' ORDER BY name").all();
-    return json(res, 200, { drivers: drivers.map(function (d) { return { id: d.id, name: d.name, cell: d.cell, createdAt: d.created_at }; }) });
+    const drivers = db.prepare("SELECT * FROM users WHERE role = 'driver' ORDER BY CASE status WHEN 'pending' THEN 0 WHEN 'active' THEN 1 ELSE 2 END, name").all();
+    return json(res, 200, { drivers: drivers.map(driverCard) });
+  }
+
+  const driverStatus = route.match(/^\/api\/admin\/drivers\/(\d+)$/);
+  if (method === 'PATCH' && driverStatus) {
+    const body = await readBody(req);
+    const status = String(body.status || '');
+    if (['pending', 'active', 'suspended'].indexOf(status) < 0) return json(res, 400, { error: 'Choose pending, active, or suspended.' });
+    const row = db.prepare("SELECT * FROM users WHERE id = ? AND role = 'driver'").get(Number(driverStatus[1]));
+    if (!row) return json(res, 404, { error: 'Driver not found.' });
+    db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, row.id);
+    if (status !== 'active') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(row.id);
+    return json(res, 200, { driver: driverCard(db.prepare('SELECT * FROM users WHERE id = ?').get(row.id)) });
   }
 
   if (method === 'POST' && route === '/api/admin/drivers') {
     const body = await readBody(req);
     const name = String(body.name || '').trim();
-    const cell = String(body.cell || '').replace(/\s/g, '');
+    const cell = normaliseCell(body.cell);
     const pass = String(body.password || '');
     if (name.length < 2) return json(res, 400, { error: 'Add the driver’s name.' });
-    if (cell.length < 10) return json(res, 400, { error: 'Enter the driver’s cell number.' });
-    if (pass.length < 4) return json(res, 400, { error: 'Use a password of at least 4 characters.' });
+    if (!cellOk(cell)) return json(res, 400, { error: 'Enter a 10-digit cell number.' });
+    const pwErr = passwordProblem(pass);
+    if (pwErr) return json(res, 400, { error: pwErr });
     if (db.prepare('SELECT id FROM users WHERE cell = ?').get(cell)) {
       return json(res, 400, { error: 'That cell number already has an account.' });
     }
-    const info = db.prepare('INSERT INTO users (name, cell, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)')
-      .run(name, cell, hashPassword(pass), 'driver', new Date().toISOString());
-    const row = db.prepare('SELECT id, name, cell, created_at FROM users WHERE id = ?').get(Number(info.lastInsertRowid));
-    return json(res, 200, { driver: { id: row.id, name: row.name, cell: row.cell, createdAt: row.created_at } });
+    const info = db.prepare('INSERT INTO users (name, cell, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(name, cell, hashPassword(pass), 'driver', 'active', new Date().toISOString());
+    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(Number(info.lastInsertRowid));
+    return json(res, 200, { driver: driverCard(row) });
   }
 
   if (method === 'GET' && route === '/api/admin/customers') {
@@ -654,7 +938,7 @@ async function handleApi(req, res, url) {
 
   if (method === 'PUT' && route === '/api/admin/settings') {
     const body = await readBody(req);
-    const keys = ['fee', 'free_over', 'min_delivery', 'phone', 'fax', 'address', 'shop_name', 'town', 'shop_lat', 'shop_lng'];
+    const keys = ['fee', 'free_over', 'min_delivery', 'phone', 'fax', 'address', 'shop_name', 'town', 'shop_lat', 'shop_lng', 'hours', 'delivery_areas', 'driver_pay'];
     const put = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
     keys.forEach(function (key) {
       if (body[key] != null) put.run(key, String(body[key]).trim());
@@ -662,10 +946,16 @@ async function handleApi(req, res, url) {
     return json(res, 200, { settings: settingsMap(db) });
   }
 
+  if (method === 'POST' && route === '/api/admin/notifications/read') {
+    db.prepare('UPDATE notifications SET read_at = ? WHERE read_at IS NULL').run(new Date().toISOString());
+    return json(res, 200, { ok: true });
+  }
+
   if (method === 'PUT' && route === '/api/admin/password') {
     const body = await readBody(req);
     const next = String(body.password || '');
-    if (next.length < 4) return json(res, 400, { error: 'Use a password of at least 4 characters.' });
+    const pwErr = passwordProblem(next);
+    if (pwErr) return json(res, 400, { error: pwErr });
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(next), user.id);
     return json(res, 200, { ok: true });
   }

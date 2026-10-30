@@ -18,12 +18,23 @@ export function Price({ value, className = 'pr' }) {
   return <span className={className}>{money(value)}</span>;
 }
 
+export function onSpecial(product) {
+  return !!(product && Number(product.compareAt) > Number(product.price));
+}
+
 export function productBadge(product) {
   if (!product || product.stock <= 0) return null;
   if (product.category === 'combo') return { kind: 'combo', label: 'Combo' };
-  if (SPECIAL_IDS.has(Number(product.id))) return { kind: 'special', label: 'Special' };
+  if (onSpecial(product) || SPECIAL_IDS.has(Number(product.id))) return { kind: 'special', label: 'Special' };
   if (product.stock <= 8) return { kind: 'low', label: 'Few left' };
   return null;
+}
+
+export function formatCell(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 10);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return digits.slice(0, 3) + ' ' + digits.slice(3);
+  return digits.slice(0, 3) + ' ' + digits.slice(3, 6) + ' ' + digits.slice(6);
 }
 
 export function shortCategory(slug, name) {
@@ -66,8 +77,8 @@ export function Pack({ product }) {
   );
 }
 
-export function Photo({ product, alt = '' }) {
-  if (product.photo) return <img src={product.photo} alt={alt} />;
+export function Photo({ product, alt = '', loading = 'lazy' }) {
+  if (product.photo) return <img src={product.photo} alt={alt} loading={loading} decoding="async" />;
   return <Pack product={product} />;
 }
 

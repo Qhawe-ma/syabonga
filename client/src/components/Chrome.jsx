@@ -22,7 +22,7 @@ export function StaffBar({ home, children }) {
   );
 }
 
-export default function Chrome({ active, children }) {
+export default function Chrome({ active, children, plain }) {
   const shop = useShop();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,7 +39,7 @@ export default function Chrome({ active, children }) {
     : 'Add your address';
   const phone = settings.phone || '';
   const tel = phone.replace(/[^\d+]/g, '');
-  const showDock = shop.count > 0 && location.pathname !== '/cart' && location.pathname !== '/checkout';
+  const showDock = shop.count > 0 && location.pathname !== '/cart' && location.pathname !== '/checkout' && !location.pathname.startsWith('/product/');
 
   useEffect(() => { setQ(params.get('q') || ''); }, [params]);
   useEffect(() => { setOpen(false); }, [location.pathname, location.search]);
@@ -88,7 +88,7 @@ export default function Chrome({ active, children }) {
             <Link className="brand" to="/" aria-label="Siyabonga Powertrade home">
               <Logo />
             </Link>
-            <form className="search" onSubmit={onSearch} role="search">
+            {plain ? null : <form className="search" onSubmit={onSearch} role="search">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></svg>
               <input
                 name="q"
@@ -99,7 +99,7 @@ export default function Chrome({ active, children }) {
                 aria-label="Search products"
                 enterKeyHint="search"
               />
-            </form>
+            </form>}
             <div className="tools">
               <Link className="acct" to={accountTo}>
                 <span className="avatar">{user ? user.name.charAt(0).toUpperCase() : (
@@ -126,7 +126,7 @@ export default function Chrome({ active, children }) {
           </div>
         </div>
       </header>
-      <div className="subnav">
+      {plain ? null : <div className="subnav">
         <div className="w subnav-inner">
           <div className="addrwrap" ref={popRef}>
             <button className="addr" type="button" aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((v) => !v)}>
@@ -155,12 +155,12 @@ export default function Chrome({ active, children }) {
           </nav>
           {phone ? <a className="call" href={'tel:' + tel}>{phone}</a> : null}
         </div>
-      </div>
+      </div>}
       <main className={showDock ? 'has-dock' : undefined}><div className="w">{children}</div></main>
       {showDock ? (
         <Link className="dock" to="/cart">
           <span className="dock-count">{shop.count}</span>
-          <span>View basket</span>
+          <span>{shop.count === 1 ? '1 item' : shop.count + ' items'}</span>
           <b>{money(shop.subtotal)}</b>
         </Link>
       ) : null}
@@ -172,12 +172,14 @@ export default function Chrome({ active, children }) {
             <p>{settings.address}</p>
             {phone ? <p><a href={'tel:' + tel}>{phone}</a></p> : null}
             {settings.fax ? <p>Fax {settings.fax}</p> : null}
+            {settings.hours ? <p>{settings.hours}</p> : null}
           </div>
           <div>
             <h2>Delivery</h2>
             <p>Staff pick your groceries and bring them to your gate.</p>
             <p>Delivery is {money(settings.fee || 25)}, and free over {money(settings.free_over || 500)}.</p>
             <p>Delivery orders start at {money(settings.min_delivery || 150)}. Collecting from the shop is free.</p>
+            {settings.delivery_areas ? <p>We deliver in {settings.delivery_areas}.</p> : null}
           </div>
           <div>
             <h2>Pay at the door</h2>

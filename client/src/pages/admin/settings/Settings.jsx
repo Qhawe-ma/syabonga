@@ -49,7 +49,10 @@ export default function Settings() {
           <label>Delivery fee (R)<input type="number" step="0.01" value={form.fee} onChange={(e) => set('fee', e.target.value)} /></label>
           <label>Free delivery over (R)<input type="number" step="0.01" value={form.free_over} onChange={(e) => set('free_over', e.target.value)} /></label>
           <label>Delivery minimum (R)<input type="number" step="0.01" value={form.min_delivery} onChange={(e) => set('min_delivery', e.target.value)} /></label>
+          <label>Driver pay per delivery (R)<input type="number" step="0.01" min="0" value={form.driver_pay ?? ''} onChange={(e) => set('driver_pay', e.target.value)} /></label>
+          <label>Delivery areas<input value={form.delivery_areas || ''} onChange={(e) => set('delivery_areas', e.target.value)} placeholder="Kranskop and nearby" /></label>
         </div>
+        <label>Opening hours<input value={form.hours || ''} onChange={(e) => set('hours', e.target.value)} placeholder="Mon–Fri 8:00–17:00, Sat 8:00–13:00" /></label>
         {error ? <p className="err">{error}</p> : null}
         <button className="btn" type="submit">Save settings</button>
       </form>

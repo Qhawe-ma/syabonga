@@ -120,6 +120,47 @@ function migrate(db) {
   addColumn(db, 'orders', 'driver_lat', 'driver_lat REAL');
   addColumn(db, 'orders', 'driver_lng', 'driver_lng REAL');
   addColumn(db, 'orders', 'driver_at', 'driver_at TEXT');
+  addColumn(db, 'products', 'compare_at', 'compare_at REAL');
+  addColumn(db, 'users', 'status', "status TEXT NOT NULL DEFAULT 'active'");
+  addColumn(db, 'users', 'id_number', 'id_number TEXT');
+  addColumn(db, 'users', 'vehicle_type', 'vehicle_type TEXT');
+  addColumn(db, 'users', 'vehicle_reg', 'vehicle_reg TEXT');
+  addColumn(db, 'users', 'licence_no', 'licence_no TEXT');
+  addColumn(db, 'users', 'bank_name', 'bank_name TEXT');
+  addColumn(db, 'users', 'account_holder', 'account_holder TEXT');
+  addColumn(db, 'users', 'account_number', 'account_number TEXT');
+  addColumn(db, 'users', 'branch_code', 'branch_code TEXT');
+  addColumn(db, 'users', 'photo', 'photo TEXT');
+  addColumn(db, 'users', 'licence_photo', 'licence_photo TEXT');
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS password_resets (
+      id INTEGER PRIMARY KEY,
+      cell TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      used INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY,
+      kind TEXT NOT NULL,
+      body TEXT NOT NULL,
+      order_id INTEGER,
+      created_at TEXT NOT NULL,
+      read_at TEXT
+    );
+  `);
+  const sampleWas = [[1, 115.9], [2, 109.9], [5, 104.9], [6, 189.9], [8, 144.9]];
+  const setWas = db.prepare('UPDATE products SET compare_at = ? WHERE id = ? AND compare_at IS NULL AND price < ?');
+  sampleWas.forEach(function (pair) { setWas.run(pair[1], pair[0], pair[1]); });
+  function ensureSetting(key, value) {
+    if (!db.prepare('SELECT key FROM settings WHERE key = ?').get(key)) {
+      db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run(key, value);
+    }
+  }
+  ensureSetting('hours', '');
+  ensureSetting('delivery_areas', 'Kranskop and nearby');
+  ensureSetting('driver_pay', '15');
   const hasShop = db.prepare('SELECT COUNT(*) AS n FROM settings').get().n;
   if (hasShop && !db.prepare('SELECT key FROM settings WHERE key = ?').get('shop_lat')) {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?)').run('shop_lat', '-28.971');
@@ -193,6 +234,9 @@ function settingsMap(db) {
   out.min_delivery = Number(out.min_delivery || 150);
   out.shop_lat = Number(out.shop_lat || -28.971);
   out.shop_lng = Number(out.shop_lng || 30.860);
+  out.driver_pay = out.driver_pay == null || out.driver_pay === '' ? 15 : Number(out.driver_pay);
+  out.hours = out.hours || '';
+  out.delivery_areas = out.delivery_areas || '';
   return out;
 }
 
@@ -211,7 +255,13 @@ function publicPlace(row) {
 
 function publicUser(row) {
   if (!row) return null;
-  return { id: row.id, name: row.name, cell: row.cell, role: row.role };
+  return {
+    id: row.id,
+    name: row.name,
+    cell: row.cell,
+    role: row.role,
+    status: row.status || 'active'
+  };
 }
 
 function publicProduct(row) {
@@ -225,7 +275,8 @@ function publicProduct(row) {
     photo: row.photo,
     active: !!row.active,
     items: row.items ? JSON.parse(row.items) : null,
-    blurb: row.blurb
+    blurb: row.blurb,
+    compareAt: row.compare_at == null ? null : Number(row.compare_at)
   };
 }
 

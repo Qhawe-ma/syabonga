@@ -26,6 +26,12 @@ export default function Home() {
           ))}
         </aside>
         <div>
+          <p className="storeline">
+            {settings.address || 'Lot 20 Main Rd, Kranskop'}
+            {settings.phone ? <> · <a href={'tel:' + String(settings.phone).replace(/[^\d+]/g, '')}>{settings.phone}</a></> : null}
+            {settings.hours ? ' · ' + settings.hours : null}
+            {' · '}Delivery {money(settings.fee || 25)}, free over {money(settings.free_over || 500)}
+          </p>
           <section className="hero">
             <div className="hero-copy">
               <p className="kicker">Kranskop · this week</p>

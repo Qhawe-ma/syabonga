@@ -1,15 +1,10 @@
-export default function Logo({ compact = false }) {
-  if (compact) {
-    return (
-      <span className="logo-plate is-mark">
-        <img src="/shared/img/mark.png" alt="Siyabonga Powertrade" />
-      </span>
-    );
-  }
+export default function Logo() {
   return (
-    <span className="logo-plate">
-      <img className="logo-full" src="/shared/img/logo-clean.png" alt="Siyabonga Powertrade" />
-      <img className="logo-mark" src="/shared/img/mark.png" alt="" />
+    <span className="brand-lockup">
+      <span className="brand-mark">
+        <img src="/shared/img/mark.png" alt="" />
+      </span>
+      <img className="brand-words" src="/shared/img/logo-wordmark.png" alt="Siyabonga Powertrade" />
     </span>
   );
 }
