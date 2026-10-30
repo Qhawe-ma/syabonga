@@ -46,13 +46,14 @@ Orders are pay on delivery or collection (cash or card machine). Nothing is char
 
 ## Logo
 
-Vector lockups live in `shared/img/`:
+The shop uses the original Siyabonga Powertrade sign, with the navy board and the address line removed.
 
-- `logo.svg` for light backgrounds
-- `logo-on-dark.svg` for the navy header and footer
-- `mark.svg` for the icon alone
+- `shared/img/logo.jpg` is the original photograph. Leave it in the repo.
+- `shared/img/logo-clean.png` is the transparent lockup used in the header and footer.
+- `shared/img/logo-clean-white.png` is the same lockup on white, used for link previews.
+- `shared/img/mark.png` is the round trolley emblem, used as the favicon and where the header is too narrow for the wordmark.
 
-The shop header uses the same mark as a React component. The favicon is `client/public/favicon.svg`.
+The header stays navy. The logo sits on a white plate so the red and navy still read.
 
 ## Before this is a real shop
 

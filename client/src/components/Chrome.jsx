@@ -14,7 +14,7 @@ export function StaffBar({ home, children }) {
     <header className="top">
       <div className="mast">
         <div className="w bar staffbar">
-          <Link className="brand" to={home}><Logo tone="on-dark" /></Link>
+          <Link className="brand" to={home}><Logo /></Link>
           <div className="tools">{children}</div>
         </div>
       </div>
@@ -86,7 +86,7 @@ export default function Chrome({ active, children }) {
         <div className="mast">
           <div className="w bar">
             <Link className="brand" to="/" aria-label="Siyabonga Powertrade home">
-              <Logo tone="on-dark" />
+              <Logo />
             </Link>
             <form className="search" onSubmit={onSearch} role="search">
               <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.2-3.2" /></svg>
@@ -167,7 +167,7 @@ export default function Chrome({ active, children }) {
       <footer>
         <div className="w foot">
           <div>
-            <Logo tone="on-dark" />
+            <Logo />
             <p className="footname">{settings.shop_name || 'Siyabonga Powertrade'}</p>
             <p>{settings.address}</p>
             {phone ? <p><a href={'tel:' + tel}>{phone}</a></p> : null}

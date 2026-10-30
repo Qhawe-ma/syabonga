@@ -41,19 +41,26 @@ p { margin: 0 0 8px; }
 .w { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
 @media (min-width: 720px) { .w { padding: 0 20px; } }
 
-.logo-lockup { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.logo-lockup .mark { width: 32px; height: 32px; flex: none; display: block; }
-.logo-lockup .tile { fill: var(--navy); }
-.logo-lockup .ink { fill: none; stroke: #fff; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.logo-lockup .word { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
-.logo-lockup .w1 { font-weight: 700; font-size: 15px; letter-spacing: -0.02em; }
-.logo-lockup .w2 { font-weight: 700; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; margin-top: 2px; }
-.logo-lockup.on-dark .tile { fill: #fff; }
-.logo-lockup.on-dark .ink { stroke: var(--navy); }
-.logo-lockup.on-dark .w1 { color: #fff; }
-.logo-lockup.on-dark .w2 { color: rgba(255, 255, 255, 0.78); }
-.logo-lockup.on-light .w1 { color: var(--navy); }
-.logo-lockup.on-light .w2 { color: var(--red); }
+.logo-plate {
+  display: inline-flex; align-items: center; justify-content: center; flex: none;
+  background: #fff; border-radius: 10px; padding: 4px 8px; line-height: 0;
+}
+.logo-plate img { display: block; height: 40px; width: auto; }
+.logo-plate .logo-mark { display: none; height: 36px; width: 36px; }
+.logo-plate.is-mark { padding: 4px; }
+.logo-plate.is-mark img { height: 36px; width: 36px; }
+@media (max-width: 339px) {
+  .logo-plate .logo-full { display: none; }
+  .logo-plate .logo-mark { display: block; }
+  .logo-plate { padding: 3px; }
+}
+.auth-logo { display: flex; justify-content: center; margin: 0 0 8px; }
+.auth-logo .logo-plate { background: transparent; padding: 0; }
+.auth-logo .logo-full { height: 48px; }
+@media (min-width: 900px) {
+  .logo-plate { padding: 5px 12px; border-radius: 12px; }
+  .logo-plate img.logo-full { height: 52px; }
+}
 
 header.top { position: sticky; top: 0; z-index: 50; background: var(--navy); color: #fff; }
 .mast { background: var(--navy); }
@@ -105,8 +112,6 @@ header.top { position: sticky; top: 0; z-index: 50; background: var(--navy); col
 
 @media (max-width: 899px) {
   .acctx, .cartx, .join, .textbtn.light { display: none; }
-  .logo-lockup .w1 { font-size: 16px; }
-  .logo-lockup .w2 { letter-spacing: 0.12em; }
   .bar { flex-wrap: wrap; gap: 8px; min-height: 0; padding: 10px 0 12px; }
   .brand { order: 1; }
   .tools { order: 2; }

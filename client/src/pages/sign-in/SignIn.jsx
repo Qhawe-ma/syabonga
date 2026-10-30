@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Chrome from '../../components/Chrome.jsx';
+import Logo from '../../components/Logo.jsx';
 import { useShop } from '../../shop.jsx';
 
 export default function SignIn() {
@@ -35,6 +36,7 @@ export default function SignIn() {
   return (
     <Chrome>
       <form className="sheet" onSubmit={submit}>
+        <div className="auth-logo"><Logo /></div>
         <h1>{up ? 'Create an account' : 'Sign in'}</h1>
         <p className="lead">{up ? 'Save your name and address, then checkout is quicker.' : 'Welcome back to Siyabonga Powertrade.'}</p>
         <label>Cell number<input value={cell} onChange={(e) => setCell(e.target.value)} inputMode="tel" placeholder="082 000 0000" required /></label>
