@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StaffBar } from '../../components/Chrome.jsx';
+import DriverAuth from './DriverAuth.jsx';
 import PinMap, { formatPin, mapsUrl } from '../../components/PinMap.jsx';
 import { money, statusLabel, useShop } from '../../shop.jsx';
 
@@ -35,8 +36,7 @@ export default function Drive() {
   }
 
   useEffect(() => {
-    if (shop.boot && user && user.role !== 'driver') navigate('/sign-in?next=/drive');
-    if (shop.boot && !user) navigate('/sign-in?next=/drive');
+    if (shop.boot && user && user.role === 'admin') navigate('/admin');
   }, [shop.boot, user, navigate]);
 
   useEffect(() => {
@@ -102,12 +102,13 @@ export default function Drive() {
     navigate('/');
   }
 
-  if (!user || user.role !== 'driver') return <p className="empty">Checking the driver sign-in…</p>;
+  if (!shop.boot) return <p className="empty">Loading…</p>;
+  if (!user || user.role !== 'driver') return <DriverAuth />;
 
   if (user.status === 'pending') {
     return (
       <>
-        <StaffBar home="/drive">
+        <StaffBar home="/driver" kicker="Drivers">
           <button className="staff-link" type="button" onClick={signOut}>Sign out</button>
         </StaffBar>
         <div className="w">
@@ -124,7 +125,7 @@ export default function Drive() {
   if (user.status === 'suspended') {
     return (
       <>
-        <StaffBar home="/drive"><button className="staff-link" type="button" onClick={signOut}>Sign out</button></StaffBar>
+        <StaffBar home="/driver" kicker="Drivers"><button className="staff-link" type="button" onClick={signOut}>Sign out</button></StaffBar>
         <div className="w"><div className="sheet"><h1>Account suspended</h1><p className="lead">Call the shop if you think this is a mistake.</p></div></div>
       </>
     );
@@ -132,7 +133,7 @@ export default function Drive() {
 
   return (
     <>
-      <StaffBar home="/drive">
+      <StaffBar home="/driver" kicker="Drivers">
         <span className="staff-name">{user.name.split(' ')[0]}</span>
         <button className="staff-link" type="button" onClick={signOut}>Sign out</button>
       </StaffBar>

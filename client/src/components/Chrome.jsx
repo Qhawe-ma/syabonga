@@ -9,12 +9,15 @@ function hello() {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
-export function StaffBar({ home, children }) {
+export function StaffBar({ home, kicker, children }) {
   return (
     <header className="top">
       <div className="mast">
-        <div className="w bar staffbar">
-          <Link className="brand" to={home}><Logo /></Link>
+        <div className="w bar staffbar appbar">
+          <Link className="brand" to={home} aria-label={kicker ? 'Siyabonga Powertrade ' + kicker : 'Siyabonga Powertrade'}>
+            <Logo />
+            {kicker ? <span className="role-label">{kicker}</span> : null}
+          </Link>
           <div className="tools">{children}</div>
         </div>
       </div>
@@ -77,7 +80,7 @@ export default function Chrome({ active, children, plain }) {
   }
 
   const accountTo = user
-    ? (user.role === 'admin' ? '/admin' : user.role === 'driver' ? '/drive' : '/account')
+    ? (user.role === 'admin' ? '/admin' : user.role === 'driver' ? '/driver' : '/account')
     : '/sign-in';
 
   return (
@@ -191,6 +194,7 @@ export default function Chrome({ active, children, plain }) {
               {(shop.boot?.categories || []).map((c) => (
                 <li key={c.slug}><Link to={'/shop?cat=' + c.slug}>{c.name}</Link></li>
               ))}
+              <li><Link className="deliver-link" to="/driver">Deliver for us</Link></li>
             </ul>
           </div>
         </div>

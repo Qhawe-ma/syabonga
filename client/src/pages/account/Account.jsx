@@ -14,7 +14,7 @@ export default function Account() {
 
   useEffect(() => {
     if (shop.boot && !shop.boot.user) navigate('/sign-in?next=/account');
-    if (shop.boot?.user?.role === 'driver') navigate('/drive');
+    if (shop.boot?.user?.role === 'driver') navigate('/driver');
     if (shop.boot?.user?.role === 'admin') navigate('/admin');
   }, [shop.boot, navigate]);
 

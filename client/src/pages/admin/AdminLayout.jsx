@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { StaffBar } from '../../components/Chrome.jsx';
 import { useShop } from '../../shop.jsx';
+import AdminSignIn from './AdminSignIn.jsx';
 
 const links = [
   ['/admin', 'Today'],
@@ -18,7 +19,7 @@ export default function AdminLayout({ children }) {
   const location = useLocation();
 
   useEffect(() => {
-    if (boot && (!boot.user || boot.user.role !== 'admin')) navigate('/sign-in?next=/admin');
+    if (boot?.user?.role === 'driver') navigate('/driver');
   }, [boot, navigate]);
 
   async function signOut() {
@@ -27,11 +28,12 @@ export default function AdminLayout({ children }) {
     navigate('/');
   }
 
-  if (!boot?.user || boot.user.role !== 'admin') return <p className="empty">Checking the shop login…</p>;
+  if (!boot) return <p className="empty">Loading…</p>;
+  if (!boot.user || boot.user.role !== 'admin') return <AdminSignIn />;
 
   return (
     <>
-      <StaffBar home="/admin">
+      <StaffBar home="/admin" kicker="Shop">
         <Link className="staff-link" to="/">Shop</Link>
         <button className="staff-link" type="button" onClick={signOut}>Sign out</button>
       </StaffBar>

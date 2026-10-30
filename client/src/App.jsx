@@ -27,6 +27,7 @@ export default function App() {
       <Route path="/account" element={<Account />} />
       <Route path="/order/:number" element={<Order />} />
       <Route path="/drive" element={<Drive />} />
+      <Route path="/driver" element={<Drive />} />
       <Route path="/admin" element={<Dashboard />} />
       <Route path="/admin/drivers" element={<Drivers />} />
       <Route path="/admin/products" element={<Products />} />
