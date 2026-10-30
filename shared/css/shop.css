@@ -290,21 +290,29 @@ main.has-dock { padding-bottom: 108px; }
 
 .depthead, .rowh h2 { font-size: 22px; line-height: 1.15; margin: 0; }
 @media (min-width: 800px) { .depthead, .rowh h2 { font-size: 26px; } }
-.depthead { margin: 28px 0 12px; }
-.qs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-@media (min-width: 720px) { .qs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.depthead { margin: 22px 0 10px; }
+.qs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 720px) { .qs { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; } }
 @media (min-width: 1100px) { .qs { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
 .qs a {
-  background: #fff; border-radius: var(--radius); text-decoration: none; text-align: center;
-  padding: 12px 8px 14px; box-shadow: var(--ring); font-weight: 600; font-size: 13.5px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0;
+  background: #fff; border-radius: var(--radius); text-decoration: none; text-align: left;
+  padding: 0 0 8px; box-shadow: var(--ring); font-weight: 700; font-size: 13px; line-height: 1.2;
+  display: flex; flex-direction: column; gap: 7px; min-width: 0; overflow: hidden; color: var(--ink);
 }
 .qs a:hover { box-shadow: 0 0 0 1px rgba(14, 42, 92, 0.35); }
 .qs .thumb {
-  width: 72px; height: 72px; border-radius: 8px; background: #F4F3F0;
+  width: 100%; aspect-ratio: 1; border-radius: 0; background: #F4F3F0;
   display: grid; place-items: center; overflow: hidden;
 }
-.qs .thumb img, .qs .thumb svg { width: 78%; height: 78%; object-fit: contain; }
+.qs .thumb img, .qs .thumb svg { width: 82%; height: 82%; object-fit: contain; }
+.qs a > span:last-child {
+  display: block; padding: 0 8px; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .rowh { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 28px 0 12px; }
 .lk { color: var(--navy); font-weight: 700; text-decoration: none; background: none; border: 0; padding: 0; font-size: 14px; }
 .lk:hover { text-decoration: underline; }
