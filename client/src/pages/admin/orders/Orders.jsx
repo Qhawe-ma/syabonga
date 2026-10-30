@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import AdminLayout from '../AdminLayout.jsx';
-import { money, useShop } from '../../../shop.jsx';
+import { money, statusLabel, useShop } from '../../../shop.jsx';
 
 const statuses = ['new', 'accepted', 'picking', 'out', 'ready', 'delivered', 'collected', 'cancelled'];
 
@@ -40,14 +40,14 @@ export default function Orders() {
   return (
     <AdminLayout>
       <h1>Orders</h1>
-      <label>Show
+      <label className="filters">Show
         <select value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All</option>
-          {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          {statuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
       </label>
       {error ? <p className="err">{error}</p> : null}
-      <table>
+      <div className="table-wrap"><table>
         <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Driver</th><th>Status</th></tr></thead>
         <tbody>
           {orders.map((order) => (
@@ -55,7 +55,7 @@ export default function Orders() {
               <td>{order.number}<div className="meta">{order.mode === 'delivery' ? (order.placeLabel ? order.placeLabel + ' · ' : '') + order.address + (order.lat != null ? ' · pin' : ' · no pin') : 'Collect'} · {order.slot}</div></td>
               <td>{order.name}<div className="meta">{order.cell}</div></td>
               <td>{order.items.map((item) => item.qty + ' × ' + item.name).join(', ')}</td>
-              <td>{money(order.total)}<div className="meta">{order.payMethod}</div></td>
+              <td className="num">{money(order.total)}<div className="meta">{order.payMethod}</div></td>
               <td>
                 {order.mode === 'delivery' ? (
                   <select value={order.driverId || ''} onChange={(e) => assign(order, e.target.value)}>
@@ -66,13 +66,13 @@ export default function Orders() {
               </td>
               <td>
                 <select value={order.status} onChange={(e) => setStatus(order, e.target.value)}>
-                  {statuses.map((s) => <option key={s}>{s}</option>)}
+                  {statuses.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
                 </select>
               </td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </AdminLayout>
   );
 }

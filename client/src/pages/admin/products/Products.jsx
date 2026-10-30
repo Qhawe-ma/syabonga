@@ -66,24 +66,24 @@ export default function Products() {
           </label>
           <label>Photo<input name="photo" type="file" accept="image/*" /></label>
         </div>
-        {form.id ? <label><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} style={{ width: 'auto', height: 'auto', marginRight: 8 }} />On the shelf</label> : null}
+        {form.id ? <label className="checks"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} />On the shelf</label> : null}
         {error ? <p className="err">{error}</p> : null}
         <button className="btn" type="submit">{form.id ? 'Save changes' : 'Add product'}</button>
-        {form.id ? <button className="lk" type="button" onClick={() => setForm(empty)} style={{ marginLeft: 12 }}>Cancel</button> : null}
+        {form.id ? <button className="textbtn" type="button" onClick={() => setForm(empty)}>Cancel</button> : null}
       </form>
-      <table>
+      <div className="table-wrap"><table>
         <thead><tr><th>Product</th><th>Price</th><th>Stock</th><th></th></tr></thead>
         <tbody>
           {rows.map((p) => (
             <tr key={p.id}>
               <td>{p.name}<div className="meta">{p.size} · {p.active ? 'On shelf' : 'Hidden'}</div></td>
-              <td>{money(p.price)}</td>
+              <td className="num">{money(p.price)}</td>
               <td>{p.stock}</td>
               <td><button className="btn mini" type="button" onClick={() => edit(p)}>Edit</button></td>
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </AdminLayout>
   );
 }

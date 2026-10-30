@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Chrome from '../../components/Chrome.jsx';
 import PlacePicker from '../../components/PlacePicker.jsx';
-import { money, useShop } from '../../shop.jsx';
+import { money, statusLabel, useShop } from '../../shop.jsx';
 
 export default function Account() {
   const shop = useShop();
@@ -27,21 +27,28 @@ export default function Account() {
     shop.api('/api/orders/mine').then((data) => setOrders(data.orders)).catch((err) => setError(err.message));
   }, [user, shop.api]);
 
+  async function signOut() {
+    await shop.api('/api/auth/logout', { method: 'POST', body: {} });
+    await shop.load();
+    navigate('/');
+  }
+
   if (!user || user.role !== 'customer') return <Chrome><p className="empty">Taking you to sign in…</p></Chrome>;
 
   return (
     <Chrome>
-      <div className="sheet" style={{ maxWidth: 640 }}>
+      <div className="sheet wide">
         <h1>{user.name.split(' ')[0]}</h1>
         <p className="lead">{user.cell}</p>
-        <h2 style={{ fontFamily: 'var(--cond)', marginTop: 8 }}>Saved places</h2>
+        <h2 className="subhead">Saved places</h2>
         <p className="lead">Home, work, or another gate. The pin is what the driver follows.</p>
         <PlacePicker value={place} onChange={(next) => { setPlace(next); shop.saveAddr(next); }} />
         {error ? <p className="err">{error}</p> : null}
-        <h2 style={{ fontFamily: 'var(--cond)', marginTop: 22 }}>Your orders</h2>
+        <h2 className="subhead">Your orders</h2>
         {!orders.length ? <p className="empty">No orders yet.</p> : orders.map((order) => (
-          <Link className="sline" key={order.number} to={'/order/' + order.number}><span>{order.number} · {order.status}</span><b>{money(order.total)}</b></Link>
+          <Link className="sline" key={order.number} to={'/order/' + order.number}><span>{order.number} · {statusLabel(order.status)}</span><b>{money(order.total)}</b></Link>
         ))}
+        <button className="btn ghost block" type="button" onClick={signOut}>Sign out</button>
       </div>
     </Chrome>
   );

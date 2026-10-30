@@ -15,7 +15,7 @@ export default function Customers() {
     <AdminLayout>
       <h1>Customers</h1>
       {error ? <p className="err">{error}</p> : null}
-      <table>
+      <div className="table-wrap"><table>
         <thead><tr><th>Name</th><th>Cell</th><th>Address</th><th>Orders</th></tr></thead>
         <tbody>
           {people.map((person) => (
@@ -29,7 +29,7 @@ export default function Customers() {
             </tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       {!people.length && !error ? <p className="empty">No customer accounts yet.</p> : null}
     </AdminLayout>
   );

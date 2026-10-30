@@ -42,7 +42,7 @@ function zoomFor(accuracy, current) {
   return 13;
 }
 
-export default function PinMap({ lat, lng, accuracy, shop, driver, onPick, follow }) {
+export default function PinMap({ lat, lng, accuracy, shop, driver, onPick, follow, className = '' }) {
   const el = useRef(null);
   const mapRef = useRef(null);
   const dropRef = useRef(null);
@@ -102,9 +102,9 @@ export default function PinMap({ lat, lng, accuracy, shop, driver, onPick, follo
     if (accuracy > 0) {
       ringRef.current = L.circle([lat, lng], {
         radius: accuracy,
-        color: '#0b3d91',
+        color: '#0E2A5C',
         weight: 1,
-        fillColor: '#2f6fed',
+        fillColor: '#0E2A5C',
         fillOpacity: 0.18,
         interactive: false
       }).addTo(map);
@@ -129,5 +129,5 @@ export default function PinMap({ lat, lng, accuracy, shop, driver, onPick, follo
       .bindTooltip(driver.name || 'Driver');
   }, [driver]);
 
-  return <div className="pinmap" ref={el} />;
+  return <div className={'pinmap' + (className ? ' ' + className : '')} ref={el} />;
 }

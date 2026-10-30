@@ -4,31 +4,70 @@ const CART = 'syb_cart';
 const ADDR = 'syb_addr';
 const ShopContext = createContext(null);
 
+const SPECIAL_IDS = new Set([1, 2, 5, 6, 8]);
+
 export function money(n) {
-  return 'R' + Number(n || 0).toFixed(2);
+  const value = Number(n || 0);
+  const sign = value < 0 ? '-' : '';
+  const [whole, cents] = Math.abs(value).toFixed(2).split('.');
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return sign + 'R ' + grouped + '.' + cents;
 }
 
 export function Price({ value, className = 'pr' }) {
-  const [whole, cents] = Number(value || 0).toFixed(2).split('.');
-  const grouped = Number(whole).toLocaleString('en-ZA').replace(/\u00a0/g, ' ');
-  return <span className={className}>R{grouped}{cents !== '00' ? <sup>{cents}</sup> : null}</span>;
+  return <span className={className}>{money(value)}</span>;
+}
+
+export function productBadge(product) {
+  if (!product || product.stock <= 0) return null;
+  if (product.category === 'combo') return { kind: 'combo', label: 'Combo' };
+  if (SPECIAL_IDS.has(Number(product.id))) return { kind: 'special', label: 'Special' };
+  if (product.stock <= 8) return { kind: 'low', label: 'Few left' };
+  return null;
+}
+
+export function shortCategory(slug, name) {
+  const map = {
+    combo: 'Combos',
+    staples: 'Staples',
+    pantry: 'Pantry',
+    fresh: 'Fresh',
+    drinks: 'Drinks',
+    home: 'Household',
+    care: 'Care'
+  };
+  return map[slug] || name || slug;
+}
+
+export function statusLabel(status) {
+  const map = {
+    new: 'New',
+    accepted: 'Accepted',
+    picking: 'Picking',
+    out: 'On the way',
+    ready: 'Ready to collect',
+    delivered: 'Delivered',
+    collected: 'Collected',
+    cancelled: 'Cancelled'
+  };
+  return map[status] || status;
 }
 
 export function Pack({ product }) {
-  const brand = (product.name || '').split(' ')[0].slice(0, 9).toUpperCase();
+  const brand = (product.name || '').split(' ')[0].slice(0, 9);
   return (
-    <svg viewBox="0 0 120 140" aria-hidden="true">
-      <path d="M26 18h68l8 14v96a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8V32z" fill="#14306b" />
-      <path d="M26 18h68l8 14H18z" fill="#fff" opacity=".28" />
-      <rect x="30" y="58" width="60" height="42" rx="5" fill="#fff" />
-      <text x="60" y="76" textAnchor="middle" fontFamily="Barlow Condensed, Arial" fontWeight="800" fontSize="14" fill="#14306b">{brand}</text>
-      <text x="60" y="92" textAnchor="middle" fontFamily="Barlow, Arial" fontSize="11" fill="#e1212b">{product.size}</text>
+    <svg viewBox="0 0 120 120" aria-hidden="true">
+      <rect x="30" y="16" width="60" height="88" rx="6" fill="#0E2A5C" />
+      <rect x="30" y="16" width="60" height="20" rx="6" fill="#16356F" />
+      <rect x="38" y="48" width="44" height="34" rx="3" fill="#fff" />
+      <text x="60" y="66" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontWeight="700" fontSize="10" fill="#0E2A5C">{brand}</text>
+      <text x="60" y="78" textAnchor="middle" fontFamily="Arial, Helvetica, sans-serif" fontSize="8" fill="#5C6370">{product.size}</text>
     </svg>
   );
 }
 
-export function Photo({ product, height = 136 }) {
-  if (product.photo) return <img src={product.photo} alt={product.name} style={{ maxHeight: height }} />;
+export function Photo({ product, alt = '' }) {
+  if (product.photo) return <img src={product.photo} alt={alt} />;
   return <Pack product={product} />;
 }
 

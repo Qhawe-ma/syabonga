@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { StaffBar } from '../../components/Chrome.jsx';
 import PinMap, { formatPin, mapsUrl } from '../../components/PinMap.jsx';
-import { useShop } from '../../shop.jsx';
+import { statusLabel, useShop } from '../../shop.jsx';
 
 const nextStatus = { accepted: 'picking', new: 'picking', picking: 'out', ready: 'out', out: 'delivered' };
-const nextLabel = { accepted: 'Start picking', new: 'Start picking', picking: 'Out for delivery', ready: 'Out for delivery', out: 'Delivered' };
+const nextLabel = { accepted: 'Start picking', new: 'Start picking', picking: 'Out for delivery', ready: 'Out for delivery', out: 'Mark as delivered' };
 
 export default function Drive() {
   const shop = useShop();
@@ -12,6 +13,7 @@ export default function Drive() {
   const [pack, setPack] = useState(null);
   const [currentId, setCurrentId] = useState(null);
   const [error, setError] = useState('');
+  const [gpsNote, setGpsNote] = useState('');
   const [here, setHere] = useState(null);
   const sent = useRef(0);
 
@@ -39,6 +41,7 @@ export default function Drive() {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       setHere({ lat, lng, name: 'You' });
+      setGpsNote('');
       const now = Date.now();
       if (now - sent.current < 15000) return;
       sent.current = now;
@@ -48,7 +51,7 @@ export default function Drive() {
         setError(err.message);
       }
     }, function () {
-      setError('Allow location so the customer can see you on the way.');
+      setGpsNote('Allow location so the customer can see you on the way.');
     }, { enableHighAccuracy: true, maximumAge: 10000 });
     return function () { navigator.geolocation.clearWatch(watch); };
   }, [current?.id, current?.status, shop.api]);
@@ -73,31 +76,27 @@ export default function Drive() {
 
   return (
     <>
-      <header className="top">
-        <div className="mast"><div className="w bar">
-          <Link className="brand" to="/drive"><img className="logo" src="/shared/img/logo.jpg" alt="Siyabonga Powertrade" /></Link>
-          <div className="tools" style={{ marginLeft: 'auto' }}>
-            <span className="acctx"><small>Driver</small><b>{shop.boot.user.name.split(' ')[0]}</b></span>
-            <button className="join" type="button" onClick={signOut}>Sign out</button>
-          </div>
-        </div></div>
-      </header>
+      <StaffBar home="/drive">
+        <span className="staff-name">{shop.boot.user.name.split(' ')[0]}</span>
+        <button className="staff-link" type="button" onClick={signOut}>Sign out</button>
+      </StaffBar>
       <div className="w drive">
         <div>
-          <h1 style={{ fontFamily: 'var(--cond)', margin: '0 0 10px' }}>Stops</h1>
+          <h1 className="page-title">Stops</h1>
+          {gpsNote ? <p className="warn">{gpsNote}</p> : null}
           {error ? <p className="err">{error}</p> : null}
           {!pack?.orders?.length ? <p className="empty">No deliveries assigned yet. The shop assigns you from Admin, Orders.</p> : pack.orders.map((order) => (
             <button key={order.id} type="button" className="stop" aria-pressed={order.id === currentId} onClick={() => setCurrentId(order.id)}>
-              <b>{order.number}</b> · {order.status}
+              <b>{order.number}</b> · {statusLabel(order.status)}
               <div className="meta">{order.placeLabel ? order.placeLabel + ' · ' : ''}{order.address}</div>
               <div className="meta">{order.name} · {order.cell} · {order.slot}</div>
             </button>
           ))}
         </div>
-        <div>
+        <div className="drive-panel">
           {!current ? <p className="empty">Choose a stop.</p> : (
             <>
-              <h2 style={{ fontFamily: 'var(--cond)', marginTop: 0 }}>{current.placeLabel || 'Drop-off'}</h2>
+              <h2 className="subhead">{current.placeLabel || 'Drop-off'}</h2>
               <p>{current.address}, {current.town}</p>
               <p className="meta">{current.name} · {current.cell}</p>
               <p>{current.items.map((item) => item.qty + ' × ' + item.name).join(', ')}</p>
@@ -105,18 +104,21 @@ export default function Drive() {
                 <>
                   <p className="coord">{formatPin(current.lat, current.lng)}</p>
                   <PinMap
+                    className="tall"
                     lat={current.lat}
                     lng={current.lng}
                     shop={pack.shop}
                     driver={here || (current.driverLat != null ? { lat: current.driverLat, lng: current.driverLng, name: 'You' } : null)}
                     follow={false}
                   />
-                  <a className="btn block" href={mapsUrl(current.lat, current.lng)} target="_blank" rel="noreferrer">Navigate</a>
                 </>
               )}
-              {nextStatus[current.status] ? (
-                <button className="btn y" type="button" style={{ marginTop: 10 }} onClick={() => mark(nextStatus[current.status])}>{nextLabel[current.status]}</button>
-              ) : <p className="ok">Delivered.</p>}
+              <div className="drive-actions">
+                {current.lat != null ? <a className="btn ghost" href={mapsUrl(current.lat, current.lng)} target="_blank" rel="noreferrer">Navigate</a> : null}
+                {nextStatus[current.status] ? (
+                  <button className="btn" type="button" onClick={() => mark(nextStatus[current.status])}>{nextLabel[current.status]}</button>
+                ) : <p className="ok">Delivered.</p>}
+              </div>
             </>
           )}
         </div>

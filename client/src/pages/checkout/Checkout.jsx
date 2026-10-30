@@ -62,7 +62,15 @@ export default function Checkout() {
   }
 
   if (!lines.length) {
-    return <Chrome><div className="sheet"><h1>Your basket is empty</h1><p className="lead">Add a few groceries, then come back to enter your details.</p><Link className="btn" to="/shop">Browse the shop</Link></div></Chrome>;
+    return (
+      <Chrome>
+        <div className="empty-state">
+          <h2>Your basket is empty</h2>
+          <p>Add a few groceries, then come back to enter your details.</p>
+          <Link className="btn" to="/shop">Browse the shop</Link>
+        </div>
+      </Chrome>
+    );
   }
 
   return (
@@ -97,7 +105,7 @@ export default function Checkout() {
           <div className="sline"><span>{mode === 'delivery' ? 'Delivery' : 'Collection'}</span><b>{fee ? money(fee) : 'Free'}</b></div>
           <div className="sline tot"><span>Total</span><b>{money(shop.subtotal + fee)}</b></div>
           <button className="btn block" form="checkout" type="submit" disabled={busy || low}>{busy ? 'Placing…' : 'Place order'}</button>
-          <p className="fine2">You pay when the order arrives or when you collect. The shop sees this order in admin.</p>
+          <p className="fine">You pay when the order arrives or when you collect. The shop sees this order in admin.</p>
         </aside>
       </div>
     </Chrome>

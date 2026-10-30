@@ -42,14 +42,14 @@ export default function Drivers() {
         {error ? <p className="err">{error}</p> : null}
         <button className="btn" type="submit">Create driver</button>
       </form>
-      <table>
+      <div className="table-wrap"><table>
         <thead><tr><th>Name</th><th>Cell</th></tr></thead>
         <tbody>
           {drivers.map((driver) => (
             <tr key={driver.id}><td>{driver.name}</td><td>{driver.cell}</td></tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
       {!drivers.length && !error ? <p className="empty">No drivers yet. Add one, then assign them on an order.</p> : null}
     </AdminLayout>
   );

@@ -194,7 +194,7 @@ export default function PlacePicker({ value, onChange }) {
         shop={{ lat: settings.shop_lat, lng: settings.shop_lng }}
         onPick={(pin) => patch(pin)}
       />
-      <button className="btn y block" type="button" onClick={locate} disabled={!!finding || !!busy}>{finding || 'Use my current location'}</button>
+      <button className="btn ghost block" type="button" onClick={locate} disabled={!!finding || !!busy}>{finding || 'Use my current location'}</button>
       <div className="coord-row">
         <p className="coord">{value.lat != null ? formatPin(value.lat, value.lng) + (value.accuracy > 0 ? ' · GPS within ' + Math.round(value.accuracy) + ' m' : '') : finding ? 'Waiting for your exact GPS…' : 'No pin yet. Rural roads often have no name, so the pin is what the driver follows.'}</p>
         {value.lat != null ? <button className="lk" type="button" onClick={clearPin}>Clear pin</button> : null}

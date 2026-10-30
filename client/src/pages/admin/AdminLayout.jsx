@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { StaffBar } from '../../components/Chrome.jsx';
 import { useShop } from '../../shop.jsx';
 
 const links = [
@@ -30,15 +31,10 @@ export default function AdminLayout({ children }) {
 
   return (
     <>
-      <header className="top">
-        <div className="mast"><div className="w bar">
-          <Link className="brand" to="/admin"><img className="logo" src="/shared/img/logo.jpg" alt="Siyabonga Powertrade" /></Link>
-          <div className="tools" style={{ marginLeft: 'auto' }}>
-            <Link className="acct" to="/"><span className="acctx"><small>Shop admin</small><b>View the shop</b></span></Link>
-            <button className="join" type="button" onClick={signOut}>Sign out</button>
-          </div>
-        </div></div>
-      </header>
+      <StaffBar home="/admin">
+        <Link className="staff-link" to="/">Shop</Link>
+        <button className="staff-link" type="button" onClick={signOut}>Sign out</button>
+      </StaffBar>
       <div className="w admin-wrap">
         <nav className="admin-nav">
           {links.map(([href, label]) => <Link key={href} to={href} aria-current={location.pathname === href ? 'true' : undefined}>{label}</Link>)}
