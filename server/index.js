@@ -341,7 +341,10 @@ function phoneHost(req) {
 }
 
 function redirectPhone(req, res) {
+  if (process.env.NODE_ENV === 'production') return false;
   if (req.socket.encrypted) return false;
+  const forwarded = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+  if (forwarded === 'https') return false;
   const host = phoneHost(req);
   if (!host) return false;
   res.writeHead(307, {
