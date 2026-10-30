@@ -1,0 +1,10 @@
+{
+  "name": "siyabonga-store",
+  "private": true,
+  "description": "Siyabonga Powertrade online shop. One Node process and a SQLite file.",
+  "scripts": {
+    "start": "node server/index.js",
+    "build": "npm run build --prefix client",
+    "dev": "npm run dev --prefix client"
+  }
+}
